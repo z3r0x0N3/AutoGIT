@@ -30,7 +30,7 @@ if [[ -f "$BIN_DIR/$SCRIPT_NAME" && -f "$TOKEN_FILE" && -f "$MAIN_FILE" ]]; then
 
 To manually add a new directory:
   echo '/path/to/project - [0000000000000000]' >> ~/.autogit/dirs_main.txt"
-
+    echo !
     echo "If you wish to reinstall, delete ~/.autogit, ~/.AUTH, and ~/bin/autogit.sh first."
     exit 0
 fi
