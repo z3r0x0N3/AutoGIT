@@ -28,8 +28,7 @@ if [[ -f "$BIN_DIR/$SCRIPT_NAME" && -f "$TOKEN_FILE" && -f "$MAIN_FILE" ]]; then
   systemctl --user start autogit.service      # start
   tail -f ~/.autogit/auto_git.log             # watch activity log
 
-To manually add a new directory:
-  echo '/path/to/project - [0000000000000000]' >> ~/.autogit/dirs_main.txt"
+To manually add a new directory Run: '/path/to/project - [0000000000000000]' >> ~/.autogit/dirs_main.txt"
     echo .
     echo "If you wish to reinstall, delete ~/.autogit, ~/.AUTH, and ~/bin/autogit.sh first."
     exit 0
