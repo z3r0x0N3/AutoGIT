@@ -21,6 +21,16 @@ err() { echo -e "\033[1;31m[x]\033[0m $*" >&2; }
 # === 1. CHECK IF ALREADY INSTALLED ===
 if [[ -f "$BIN_DIR/$SCRIPT_NAME" && -f "$TOKEN_FILE" && -f "$MAIN_FILE" ]]; then
     warn "AutoGit appears to be already installed."
+    warn "Use the following commands:
+
+  systemctl --user status autogit.service     # check status
+  systemctl --user stop autogit.service       # stop
+  systemctl --user start autogit.service      # start
+  tail -f ~/.autogit/auto_git.log             # watch activity log
+
+To manually add a new directory:
+  echo '/path/to/project - [0000000000000000]' >> ~/.autogit/dirs_main.txt"
+
     echo "If you wish to reinstall, delete ~/.autogit, ~/.AUTH, and ~/bin/autogit.sh first."
     exit 0
 fi
