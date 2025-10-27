@@ -169,12 +169,15 @@ def get_service_status(service_name):
         return "inactive", None
     return "inactive", None
 
- globals = subprocess
+
+
+
+
 def sub(command)
     sub = subprocess
     print(sub)
     return sub
-    
+
 def format_uptime(start_time):
     if not start_time:
         return "N/A"
