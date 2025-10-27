@@ -136,10 +136,16 @@ def add_autosave_dir() -> None:
     if not path:
         return
     entries = read_lines(AUTOSAVE_FILE)
-    if path in entries:
+    plain_paths = [e.split("::")[0] for e in entries]
+    if path in plain_paths:
         messagebox.showinfo("AutoGit", "That directory is already in the AutoSave list.")
         return
-    entries.append(path)
+
+    entry = path
+    if autosave_sync_var.get():
+        entry += "::sync"
+
+    entries.append(entry)
     write_lines(AUTOSAVE_FILE, entries)
     refresh_autosave_list()
     messagebox.showinfo("AutoGit", f"Added to AutoSave:\n{path}")
@@ -154,14 +160,20 @@ def remove_selected_autosave_dir() -> None:
     removed = entries.pop(idx)
     write_lines(AUTOSAVE_FILE, entries)
     refresh_autosave_list()
-    messagebox.showinfo("AutoGit", f"Removed from AutoSave:\n{removed}")
+    removed_path = removed.split("::")[0]
+    messagebox.showinfo("AutoGit", f"Removed from AutoSave:\n{removed_path}")
 
 def refresh_autosave_list() -> None:
     """Refresh the display of AutoSave watch list."""
     autosave_listbox.delete(0, tk.END)
     entries = read_lines(AUTOSAVE_FILE)
     for e in entries:
-        autosave_listbox.insert(tk.END, e)
+        if "::sync" in e:
+            path = e.split("::")[0]
+            display_text = f"{path} (sync)"
+        else:
+            display_text = e
+        autosave_listbox.insert(tk.END, display_text)
     autosave_status_var.set(f"Auto-saving {len(entries)} directories")
 
 # --- System Functions --------------------------------------------------------
@@ -256,7 +268,7 @@ def build_gui() -> None:
     ensure_files()
     global root, dir_frame, dir_listbox, dir_status_var
     global autosave_frame, autosave_listbox, autosave_status_var
-    global git_status_label, saver_status_label
+    global git_status_label, saver_status_label, autosave_sync_var
 
     root.title("AutoGit Manager")
     root.geometry("800x650")
@@ -303,6 +315,21 @@ def build_gui() -> None:
     saver_status_label.pack(anchor="w")
 
     tk.Label(autosave_frame, text="AutoSave Directories", **LABEL_STYLE).pack(anchor="w", pady=5)
+
+    autosave_sync_var = tk.BooleanVar()
+    sync_check = tk.Checkbutton(
+        autosave_frame,
+        text="Enable Real-time Git Sync",
+        variable=autosave_sync_var,
+        bg=BG_COLOR,
+        fg=CYAN,
+        selectcolor=BG_COLOR,
+        activebackground=BG_COLOR,
+        activeforeground=CYAN,
+        font=("Consolas", 10),
+    )
+    sync_check.pack(anchor="w")
+
     autosave_listbox = tk.Listbox(autosave_frame, height=15, **LISTBOX_STYLE)
     autosave_listbox.pack(fill="both", expand=True, pady=5)
 
