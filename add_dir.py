@@ -177,24 +177,24 @@ def get_service_status(service_name):
 
 
 
-
-def globalize(variable,alias):
+# Register some globals in a controlled way
+def globalize():
+    global sub, variable, alias
+    sub = subprocess
     variable = []
     alias = []
-    sub = subprocess 
-    global variable
-    global alias 
-    global sub  
-    print(sub)
+    print(f"Globals set: sub={sub.__name__}, variable={variable}, alias={alias}")
 
-
-def globals():
-    globals = for variable and alias in globalize()
-    print(globals)
-
+# Print all current globals of interest
 def show_globals():
-    print
-    print(sub)
+    print("Global 'sub':", sub)
+    print("Global 'variable':", variable)
+    print("Global 'alias':", alias)
+
+# Run demonstration
+if __name__ == "__main__":
+    globalize()
+    show_globals()
 
 
 
