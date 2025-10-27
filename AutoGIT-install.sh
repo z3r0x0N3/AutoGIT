@@ -9,8 +9,11 @@ SERVICE_DIR="$HOME/.config/systemd/user"
 TOKEN_FILE="$AUTH_DIR/.GIT_token"
 MAIN_FILE="$AUTOGIT_DIR/dirs_main.txt"
 CLONE_FILE="$AUTOGIT_DIR/dirs_clone.txt"
-SCRIPT_NAME="autogit.sh"
-SERVICE_FILE="$SERVICE_DIR/autogit.service"
+AUTOSAVE_FILE="$AUTOGIT_DIR/files_autosave.txt"
+GIT_SCRIPT_NAME="autogit.sh"
+SAVE_SCRIPT_NAME="autosave.sh"
+GIT_SERVICE_FILE="$SERVICE_DIR/autogit.service"
+SAVE_SERVICE_FILE="$SERVICE_DIR/autosave.service"
 INSTALL_DIR="$(pwd)"
 
 # === FUNCTIONS ===
@@ -18,32 +21,47 @@ log() { echo -e "\033[1;32m[*]\033[0m $*"; }
 warn() { echo -e "\033[1;33m[!]\033[0m $*"; }
 err() { echo -e "\033[1;31m[x]\033[0m $*" >&2; }
 
-# === 1. CHECK IF ALREADY INSTALLED ===
-if [[ -f "$BIN_DIR/$SCRIPT_NAME" && -f "$TOKEN_FILE" && -f "$MAIN_FILE" ]]; then
+# === 1. CHECK DEPENDENCIES ===
+if ! command -v inotifywait &> /dev/null; then
+    err "'inotifywait' command not found. Please install 'inotify-tools'."
+    read -rp "Attempt to install 'inotify-tools' now? (y/N) " choice
+    if [[ "$choice" =~ ^[Yy]$ ]]; then
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y inotify-tools
+        elif command -v dnf &> /dev/null; then
+            sudo dnf install -y inotify-tools
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y inotify-tools
+        elif command -v pacman &> /dev/null; then
+            sudo pacman -S --noconfirm inotify-tools
+        else
+            err "Could not determine package manager. Please install 'inotify-tools' manually."
+            exit 1
+        fi
+    else
+        err "Installation aborted by user."
+        exit 1
+    fi
+fi
+
+
+# === 2. CHECK IF ALREADY INSTALLED ===
+if [[ -f "$BIN_DIR/$GIT_SCRIPT_NAME" && -f "$TOKEN_FILE" && -f "$MAIN_FILE" ]]; then
     warn "AutoGit appears to be already installed."
-    warn "Use the following commands:
-
-  systemctl --user status autogit.service     # check status
-  systemctl --user stop autogit.service       # stop
-  systemctl --user start autogit.service      # start
-  tail -f ~/.autogit/auto_git.log             # watch activity log
-
-To manually add a new directory Run: '/path/to/project - [0000000000000000]' >> ~/.autogit/dirs_main.txt"
-    echo .
-    echo "If you wish to reinstall, delete ~/.autogit, ~/.AUTH, and ~/bin/autogit.sh first."
+    warn "If you wish to reinstall, delete ~/.autogit, ~/.AUTH, and ~/bin/autogit.sh first."
     exit 0
 fi
 
-# === 2. PROMPT FOR USER INPUT ===
+# === 3. PROMPT FOR USER INPUT ===
 echo "=== AutoGit Setup ==="
 read -rp "Enter your GitHub username: " GIT_USER
 read -rsp "Enter your GitHub Personal Access Token (with 'repo' scope): " TOKEN
 echo
 
-# === 3. CREATE FOLDERS ===
+# === 4. CREATE FOLDERS ===
 mkdir -p "$AUTOGIT_DIR" "$AUTH_DIR" "$BIN_DIR" "$SERVICE_DIR"
 
-# === 4. WRITE TOKEN FILE ===
+# === 5. WRITE TOKEN FILE ===
 if [[ ! -f "$TOKEN_FILE" ]]; then
     echo "$TOKEN" > "$TOKEN_FILE"
     chmod 600 "$TOKEN_FILE"
@@ -52,57 +70,65 @@ else
     warn "Token file already exists, skipping."
 fi
 
-# === 5. CREATE WATCH FILES ===
-if [[ ! -f "$MAIN_FILE" ]]; then
-    echo "# /abs/path/to/repo - [0000000000000000]" > "$MAIN_FILE"
-    log "Created $MAIN_FILE"
-fi
+# === 6. CREATE WATCH FILES ===
+for f in "$MAIN_FILE" "$CLONE_FILE" "$AUTOSAVE_FILE"; do
+    if [[ ! -f "$f" ]]; then
+        echo "# Auto-generated file" > "$f"
+        log "Created $f"
+    fi
+done
 
-if [[ ! -f "$CLONE_FILE" ]]; then
-    cp "$MAIN_FILE" "$CLONE_FILE"
-    log "Created $CLONE_FILE"
-fi
+# === 7. MOVE SCRIPTS ===
+for script in "$GIT_SCRIPT_NAME" "$SAVE_SCRIPT_NAME"; do
+    if [[ -f "$INSTALL_DIR/$script" ]]; then
+        cp "$INSTALL_DIR/$script" "$BIN_DIR/"
+        chmod +x "$BIN_DIR/$script"
+        log "Installed $BIN_DIR/$script"
+    else
+        err "$script not found in current directory!"
+        exit 1
+    fi
+done
 
-# === 6. MOVE autogit.sh SCRIPT ===
-if [[ -f "$INSTALL_DIR/autogit.sh" ]]; then
-    cp "$INSTALL_DIR/autogit.sh" "$BIN_DIR/"
-    chmod +x "$BIN_DIR/autogit.sh"
-    log "Installed $BIN_DIR/autogit.sh"
-else
-    err "autogit.sh not found in current directory!"
-    exit 1
-fi
-
-# === 7. CREATE SYSTEMD SERVICE ===
-cat > "$SERVICE_FILE" <<EOF
+# === 8. CREATE SYSTEMD SERVICES ===
+cat > "$GIT_SERVICE_FILE" <<EOF
 [Unit]
 Description=AutoGit Backup Daemon
 After=network-online.target
 
 [Service]
-ExecStart=$BIN_DIR/autogit.sh run-loop
+ExecStart=$BIN_DIR/$GIT_SCRIPT_NAME run-loop
 Restart=always
 RestartSec=5
 Environment=GIT_USER=$GIT_USER
 Environment=TOKEN_FILE=$TOKEN_FILE
-Environment=BRANCH=main
-Environment=WATCH_FILE=$MAIN_FILE
-Environment=CLONE_FILE=$CLONE_FILE
-Environment=LOG_FILE=$AUTOGIT_DIR/auto_git.log
-Environment=PID_FILE=$AUTOGIT_DIR/auto_git.pid
 
 [Install]
 WantedBy=default.target
 EOF
+log "Created user service: $GIT_SERVICE_FILE"
 
-log "Created user service: $SERVICE_FILE"
+cat > "$SAVE_SERVICE_FILE" <<EOF
+[Unit]
+Description=AutoGit File Saver Daemon
 
-# === 8. RELOAD AND ENABLE SERVICE ===
+[Service]
+ExecStart=$BIN_DIR/$SAVE_SCRIPT_NAME run-loop
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=default.target
+EOF
+log "Created user service: $SAVE_SERVICE_FILE"
+
+# === 9. RELOAD AND ENABLE SERVICES ===
 systemctl --user daemon-reload
 systemctl --user enable --now autogit.service
-log "AutoGit systemd service started successfully."
+systemctl --user enable --now autosave.service
+log "AutoGit services started successfully."
 
-# === 9. SUMMARY ===
+# === 10. SUMMARY ===
 cat <<EOM
 
 ✅ AutoGit installation complete!
@@ -110,18 +136,10 @@ cat <<EOM
 GitHub user: $GIT_USER
 Token file: $TOKEN_FILE
 Watch list: $MAIN_FILE
-Log file: $AUTOGIT_DIR/auto_git.log
-Service: $SERVICE_FILE
+Autosave list: $AUTOSAVE_FILE
+Log files: $AUTOGIT_DIR/
+Services: autogit.service, autosave.service
 
-Use the following commands:
-
-  systemctl --user status autogit.service     # check status
-  systemctl --user stop autogit.service       # stop
-  systemctl --user start autogit.service      # start
-  tail -f ~/.autogit/auto_git.log             # watch activity log
-
-To manually add a new directory:
-  echo "/path/to/project - [0000000000000000]" >> ~/.autogit/dirs_main.txt
+Use 'systemctl --user [status|start|stop] [autogit|autosave].service' to manage.
 
 EOM
-
