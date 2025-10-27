@@ -12,6 +12,12 @@ AUTOSAVE_FILE = os.path.join(AUTOGIT_DIR, "files_autosave.txt")
 # --- COLORS ---
 BG_COLOR = "#0D0221"
 FG_COLOR = "#F0F0F0"
+
+
+
+
+
+
 CYAN = "#00f0f0"
 PURPLE = "#8f00f0"
 TANGERINE = "#ff8000"
