@@ -182,15 +182,15 @@ def globalize("variable': {}' ,"alias': {}' ",):
     variable = []
     alias = []
     sub = subprocess 
-    global sub
-    global sub 
+    global variable
+    global alias 
     global sub  
     print(sub)
 
 
 def globals():
-    globals = globalize()
-
+    globals = for variable and alias in globalize()
+    print(globals)
 
 def show_globals():
     print

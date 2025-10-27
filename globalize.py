@@ -1,4 +1,4 @@
-def globalize("variable': {}' ,"alias': {}' ",):
+def globalize("variable': ' {} ,"alias': ' {} ",):
     variable = []
     alias = []
     sub = subprocess 
