@@ -177,8 +177,8 @@ dir_listbox.pack(fill="both", expand=True, pady=5)
 dir_btn_frame = tk.Frame(dir_frame, bg=BG_COLOR)
 dir_btn_frame.pack(fill="x", pady=5)
 
-tk.Button(dir_btn_frame, text="➕ Add Dir", command=add_dir, **BTN_STYLE).pack(side="left", padx=5)
-tk.Button(dir_btn_frame, text="➖ Remove", command=remove_selected_dir, **BTN_STYLE).pack(side="left", padx=5)
+tk.Button(dir_btn_frame, text="➕", command=add_dir, **BTN_STYLE).pack(side="left", padx=5)
+tk.Button(dir_btn_frame, text="➖", command=remove_selected_dir, **BTN_STYLE).pack(side="left", padx=5)
 tk.Button(dir_btn_frame, text="🔄 Refresh", command=refresh_dir_list, **BTN_STYLE).pack(side="left", padx=5)
 tk.Button(dir_btn_frame, text="📄 Open", command=lambda: open_file(MAIN_FILE), **BTN_STYLE).pack(side="left", padx=5)
 
