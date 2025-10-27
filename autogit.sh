@@ -21,7 +21,7 @@ BRANCH="${BRANCH:-main}"
 
 # GitHub settings
 GIT_USER="${GIT_USER:-z3r0x0N3}"                  # <--- CHANGE if needed
-TOKEN_FILE="${TOKEN_FILE:-$HOME/.AUTH/.GIT_token}" # expects a PAT
+TOKEN_FILE="${TOKEN_FILE:-$HOME/.AUTH/.GIT_token}" # expects a PATH
 API_URL="${API_URL:-https://api.github.com}"
 GITHUB_HOST="github.com"
 
