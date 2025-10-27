@@ -184,7 +184,8 @@ def update_status():
     # Git Watcher Status
     git_status, git_start_time = get_service_status("autogit.service")
     if git_status == "active":
-        os.run("echo 'AG-Directory-Manager-Online > > > [_TRUE_]")
+        import subproccess as sub
+        sub.run("echo 'AG-Directory-Manager-Online > > > [_TRUE_]")
         dir_frame.config(highlightbackground=GREEN, highlightthickness=2)
         git_status_label.config(text=f"AG-Directory-Manager > > > \n [!]-⚠️-[!]-⚠️-[!] -[!]-⚠️-[!]-⚠️[!] \n  [ ✅️-ONLINE-<< ⏳ >>-SINCE ] >>> <{format_uptime(git_start_time)}>")
 
@@ -196,11 +197,12 @@ def update_status():
     # Auto-Saver Status
     saver_status, saver_start_time = get_service_status("autosave.service")
     if saver_status == "active":
+       import subproccess as sub
        os.run("echo 'AG-File-Service-Online > > > [_TRUE_]")
        autosave_frame.config(highlightbackground=GREEN, highlightthickness=2)
        saver_status_label.config(text=f"AG-File-service > > > [ ✅️-ONLINE-✅️ SINCE ] >>> {saver_start_time.strftime('%Y-%m-%d %H:%M:%S') if saver_start_time else 'N/A'}")
     else:
-        os.run("echo 'AG-File-Service-online > > > [_TRUE_]")
+        sub.run("echo 'AG-File-Service-online > > > [_TRUE_]")
         autosave_frame.config(highlightbackground=RED, highlightthickness=2)
         saver_status_label.config(text="AG-File-service > > > [ ⚠️-OFFLINE-⚠️ ]")
 
