@@ -179,7 +179,7 @@ def get_service_status(service_name):
 
 # Register some globals in a controlled way
 def globalize():
-    import su
+    import subprocess
     global sub, variable, alias
     sub = subprocess
     variable = []
