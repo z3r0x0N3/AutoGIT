@@ -185,7 +185,7 @@ def update_status():
     git_status, git_start_time = get_service_status("autogit.service")
     if git_status == "active":
         dir_frame.config(highlightbackground=GREEN, highlightthickness=2)
-        git_status_label.config(text=f"AG-Directory-Manager > > > [ ⚠️ -ONLINE-SINCE-⚠️  ] >>> [ ⏳<{format_uptime(git_start_time)}>[ ⏳]")
+        git_status_label.config(text=f"AG-Directory-Manager > > > \n [!]-⚠️-[!]-⚠️-[!] -[!]-⚠️-[!]-⚠️[!]  [ ⚠️ -ONLINE-SINCE-⚠️  ] >>> [ ⏳<{format_uptime(git_start_time)}>[ ⏳]")
     else:
         dir_frame.config(highlightbackground=RED, highlightthickness=2)
         git_status_label.config(text="AG-Directory-Manager > > > [ OFFLINE ]")
