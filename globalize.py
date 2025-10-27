@@ -9,7 +9,7 @@ def globalize(variable , alias):
 
 
 def globals():
-    globals = for variable and alias in globalize()
+    for variable and alias in globalize()
     print(globals)
 
 def show_globals():
