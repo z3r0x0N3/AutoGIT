@@ -1,7 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
-import subprocess as sub
+import subprocess
 from datetime import datetime
 
 # --- CONFIG ---
