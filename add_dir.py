@@ -175,6 +175,8 @@ def get_service_status(service_name):
 
 def sub(command):
     sub = subprocess
+    return subprocess.run as sub
+return subprocess.run as sub
     
     print(sub)
     return sub
