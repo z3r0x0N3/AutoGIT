@@ -173,13 +173,10 @@ def get_service_status(service_name):
 
 
 
-def sub(command):
-    sub = subprocess
-    return subprocess.run as sub
-return subprocess.run as sub
-    
-    print(sub)
-    return sub
+def sub():
+    sub = subprocess;   
+    print(sub);
+    return sub;
 
 def format_uptime(start_time):
     if not start_time:
@@ -209,8 +206,7 @@ def update_status():
     # Auto-Saver Status
     saver_status, saver_start_time = get_service_status("autosave.service")
     if saver_status == "active":
-       import subproccess as sub
-       os.run("echo 'AG-File-Service-Online > > > [_TRUE_]")
+       sub.run("echo 'AG-File-Service-Online > > > [_TRUE_]")
        autosave_frame.config(highlightbackground=GREEN, highlightthickness=2)
        saver_status_label.config(text=f"AG-File-service > > > [ ✅️-ONLINE-✅️ SINCE ] >>> {saver_start_time.strftime('%Y-%m-%d %H:%M:%S') if saver_start_time else 'N/A'}")
     else:
