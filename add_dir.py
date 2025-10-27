@@ -181,7 +181,7 @@ def get_service_status(service_name):
 
 sub = subprocess   
 print(sub)
-return globals sub
+return sub
 
 
 
