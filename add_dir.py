@@ -169,6 +169,8 @@ def get_service_status(service_name):
         return "inactive", None
     return "inactive", None
 
+subproccess.run = sub
+
 def format_uptime(start_time):
     if not start_time:
         return "N/A"
