@@ -197,8 +197,8 @@ autosave_listbox.pack(fill="both", expand=True, pady=5)
 autosave_btn_frame = tk.Frame(autosave_frame, bg=BG_COLOR)
 autosave_btn_frame.pack(fill="x", pady=5)
 
-tk.Button(autosave_btn_frame, text="➕ Add File", command=add_autosave_file, **BTN_STYLE).pack(side="left", padx=5)
-tk.Button(autosave_btn_frame, text="➖ Remove", command=remove_selected_autosave_file, **BTN_STYLE).pack(side="left", padx=5)
+tk.Button(autosave_btn_frame, text="➕", command=add_autosave_file, **BTN_STYLE).pack(side="left", padx=5)
+tk.Button(autosave_btn_frame, text="➖", command=remove_selected_autosave_file, **BTN_STYLE).pack(side="left", padx=5)
 tk.Button(autosave_btn_frame, text="🔄 Refresh", command=refresh_autosave_list, **BTN_STYLE).pack(side="left", padx=5)
 tk.Button(autosave_btn_frame, text="📄 Open", command=lambda: open_file(AUTOSAVE_FILE), **BTN_STYLE).pack(side="left", padx=5)
 
