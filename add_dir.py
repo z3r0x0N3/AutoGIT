@@ -1,7 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
-import subprocess
+import subprocess as sub
 from datetime import datetime
 
 # --- CONFIG ---
@@ -212,31 +212,30 @@ def format_uptime(start_time):
     return f"{int(seconds % 60)}s:{int(minutes % 60)}m:{int(hours % 24)}h:{int(days)}d"
 
 def update_status():
-    # Git Watcher Status
     git_status, git_start_time = get_service_status("autogit.service")
     if git_status == "active":
-        import subproccess as sub
-        sub.run("echo 'AG-Directory-Manager-Online > > > [_TRUE_]")
+        sub.run(["echo", "AG-Directory-Manager-Online > > > [_TRUE_]"])
         dir_frame.config(highlightbackground=GREEN, highlightthickness=2)
-        git_status_label.config(text=f"AG-Directory-Manager > > > \n [!]-⚠️-[!]-⚠️-[!] -[!]-⚠️-[!]-⚠️[!] \n  [ ✅️-ONLINE-<< ⏳ >>-SINCE ] >>> <{format_uptime(git_start_time)}>")
-
+        git_status_label.config(
+            text=f"AG-Directory-Manager >>> [✅ ONLINE ⏳ SINCE] <{format_uptime(git_start_time)}>"
+        )
     else:
         dir_frame.config(highlightbackground=RED, highlightthickness=2)
-        git_status_label.config(text="AG-Directory-Manager > > > [ ⚠️-OFFLINE-⚠️ ]")
+        git_status_label.config(text="AG-Directory-Manager [ ⚠️ OFFLINE ⚠️ ]")
 
-
-    # Auto-Saver Status
     saver_status, saver_start_time = get_service_status("autosave.service")
     if saver_status == "active":
-       sub.run("echo 'AG-File-Service-Online > > > [_TRUE_]")
-       autosave_frame.config(highlightbackground=GREEN, highlightthickness=2)
-       saver_status_label.config(text=f"AG-File-service > > > [ ✅️-ONLINE-✅️ SINCE ] >>> {saver_start_time.strftime('%Y-%m-%d %H:%M:%S') if saver_start_time else 'N/A'}")
+        sub.run(["echo", "AG-File-Service-Online > > > [_TRUE_]"])
+        autosave_frame.config(highlightbackground=GREEN, highlightthickness=2)
+        saver_status_label.config(
+            text=f"AG-File-Service >>> [✅ ONLINE SINCE] >>> "
+                 f"{saver_start_time.strftime('%Y-%m-%d %H:%M:%S') if saver_start_time else 'N/A'}"
+        )
     else:
-        sub.run("echo 'AG-File-Service-online > > > [_TRUE_]")
         autosave_frame.config(highlightbackground=RED, highlightthickness=2)
-        saver_status_label.config(text="AG-File-service > > > [ ⚠️-OFFLINE-⚠️ ]")
+        saver_status_label.config(text="AG-File-Service [ ⚠️ OFFLINE ⚠️ ]")
 
-    root.after(5000, update_status) # Update every 5 seconds
+    root.after(5000, update_status)
 
 # --- GUI setup ---
 ensure_files()
