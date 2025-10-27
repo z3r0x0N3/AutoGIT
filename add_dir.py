@@ -186,7 +186,7 @@ def update_status():
     if git_status == "active":
         os.run("echo 'AG-Directory-Manager-Online > > > [_TRUE_]")
         dir_frame.config(highlightbackground=GREEN, highlightthickness=2)
-        git_status_label.config(text=f"AG-Directory-Manager > > > \n [!]-⚠️-[!]-⚠️-[!] -[!]-⚠️-[!]-⚠️[!] \n  [ ✅️-ONLINE-<< ⏳ >>-SINCE ] >>> <{format_uptime(git_start_time)}>"
+        git_status_label.config(text=f"AG-Directory-Manager > > > \n [!]-⚠️-[!]-⚠️-[!] -[!]-⚠️-[!]-⚠️[!] \n  [ ✅️-ONLINE-<< ⏳ >>-SINCE ] >>> <{format_uptime(git_start_time)}>")
 
     else:
         dir_frame.config(highlightbackground=RED, highlightthickness=2)
