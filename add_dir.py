@@ -178,10 +178,10 @@ def get_service_status(service_name):
 
 
 
-def sub():
-    sub = subprocess;   
-    print(sub);
-    return sub;
+def run_local_file():
+    sub = subprocess   
+    print(sub)
+    return sub
 
 def format_uptime(start_time):
     if not start_time:
