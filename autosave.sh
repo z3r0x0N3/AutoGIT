@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
-# autosave.sh - Local file watcher (no Git sync)
+# ===================================================================
+# AutoSave Unified Watcher — by Z3R0
+# Watches files listed in ~/.autogit/files_autosave.txt
+# Detects changes instantly using inotifywait and auto-saves to disk.
+# ===================================================================
 
 set -Eeuo pipefail
 IFS=$'\n\t'
 
+# --- CONFIG ---
 AUTOSAVE_FILE="${AUTOSAVE_FILE:-$HOME/.autogit/files_autosave.txt}"
 LOG_FILE="${LOG_FILE:-$HOME/.autogit/autosave.log}"
 PID_FILE="${PID_FILE:-$HOME/.autogit/autosave.pid}"
-INTERVAL="${INTERVAL:-0.1}" # 100 ms default poll
-SCRIPT_NAME="$(basename "$0")"
+BACKUP_DIR="${BACKUP_DIR:-$HOME/.autogit/backups}"
+INTERVAL="${INTERVAL:-0.05}"  # 50ms debounce between events
 
+mkdir -p "$(dirname "$AUTOSAVE_FILE")" "$BACKUP_DIR"
+touch "$AUTOSAVE_FILE" "$LOG_FILE"
+
+# --- HELPERS ---
 log() {
-  mkdir -p "$(dirname "$LOG_FILE")"
-  printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" >> "$LOG_FILE"
-}
-
-ensure_runtime_paths() {
-  mkdir -p "$(dirname "$AUTOSAVE_FILE")"
-  touch "$AUTOSAVE_FILE" "$LOG_FILE"
+  local msg="$1"; local ts
+  ts="$(date '+%Y-%m-%d %H:%M:%S')"
+  echo "$ts  $msg" | tee -a "$LOG_FILE" >/dev/null
 }
 
 is_running() {
@@ -25,62 +30,87 @@ is_running() {
 }
 
 write_pid() { echo "$$" > "$PID_FILE"; }
-cleanup() { rm -f "$PID_FILE"; log "Shutdown"; exit 0; }
 
-run_loop() {
-  ensure_runtime_paths
+cleanup() {
+  rm -f "$PID_FILE"
+  log "[⚠️] AutoSave stopped"
+  exit 0
+}
+
+# --- CORE DETECTION + SAVE ---
+run_saver() {
   write_pid
   trap cleanup EXIT INT TERM
-  log "Startup (PID $$, interval ${INTERVAL}s)"
-
-  if ! command -v inotifywait &>/dev/null; then
-    log "ERROR: inotifywait not found. Install inotify-tools."
-    exit 1
-  fi
+  log "[🚀] AutoSave started (PID $$)"
 
   while true; do
-    mapfile -t files < <(grep -vE '^#|^$' "$AUTOSAVE_FILE" | xargs -r -d '\n' realpath 2>/dev/null || true)
-    (( ${#files[@]} == 0 )) && { log "No files to watch. Sleep 10s."; sleep 10; continue; }
+    mapfile -t targets < <(grep -vE '^\s*#|^\s*$' "$AUTOSAVE_FILE" | xargs -r -d '\n' realpath 2>/dev/null || true)
 
-    inotifywait -q -e modify "${files[@]}" |
-    while read -r event; do
-      file="${event##* }"
-      [[ -f "$file" ]] || continue
-      log "Detected modification: $file"
-      # write-through — read + rewrite to force flush
-      tmp="$(mktemp)"
-      cat "$file" > "$tmp" && mv "$tmp" "$file"
-      sync -f "$file" || true
-      log "Flushed $file to disk"
+    if [[ ${#targets[@]} -eq 0 ]]; then
+      log "[⚠️] No files listed. Sleeping 10s..."
+      sleep 10
+      continue
+    fi
+
+    log "[👀] Watching ${#targets[@]} files..."
+    inotifywait -q -m -e modify,close_write,move,create,delete "${targets[@]}" \
+      --format '%e|%w%f' |
+    while IFS='|' read -r event path; do
+      [[ -z "$path" ]] && continue
+
+      # Handle modification or creation
+      if [[ "$event" =~ MODIFY|CLOSE_WRITE|CREATE ]]; then
+        if [[ -f "$path" ]]; then
+          backup_name="$(basename "$path")_$(date +%Y%m%d_%H%M%S).bak"
+          cp "$path" "$BACKUP_DIR/$backup_name"
+          log "[💾] Saved change → $path  (backup: $backup_name)"
+        fi
+      fi
+
+      # Handle deletion
+      if [[ "$event" =~ DELETE ]]; then
+        log "[❌] File deleted → $path"
+      fi
+
+      sleep "$INTERVAL"
     done
-    sleep "$INTERVAL"
   done
 }
 
+# --- SERVICE CONTROL ---
 start_service() {
-  ensure_runtime_paths
-  if is_running; then echo "AutoSaver already running."; exit 0; fi
-  nohup "$0" run-loop >/dev/null 2>&1 &
-  echo "$!" > "$PID_FILE"
-  echo "AutoSaver started (PID $!)"
+  if is_running; then
+    log "[ℹ️] Already running (PID $(cat "$PID_FILE"))"
+    exit 0
+  fi
+  nohup "$0" run >/dev/null 2>&1 &
+  log "[✅] Started AutoSave in background (PID $!)"
 }
 
 stop_service() {
-  if ! is_running; then echo "AutoSaver not running."; exit 0; fi
-  kill "$(cat "$PID_FILE")" && rm -f "$PID_FILE"
-  echo "Stopped AutoSaver"
+  if is_running; then
+    kill "$(cat "$PID_FILE")" 2>/dev/null || true
+    rm -f "$PID_FILE"
+    log "[🛑] AutoSave stopped manually"
+  else
+    log "[ℹ️] No active AutoSave process"
+  fi
 }
 
 status_service() {
-  if is_running; then echo "AutoSaver running (PID $(cat "$PID_FILE"))"
-  else echo "AutoSaver not running"; fi
+  if is_running; then
+    echo "AutoSave running (PID $(cat "$PID_FILE"))"
+  else
+    echo "AutoSave not running"
+  fi
 }
 
+# --- CLI ENTRY ---
 case "${1:-}" in
   start) start_service ;;
   stop) stop_service ;;
   status) status_service ;;
-  run-loop) run_loop ;;
-  *) echo "Usage: $SCRIPT_NAME <start|stop|status|run-loop>"; exit 1 ;;
+  run) run_saver ;;
+  *) echo "Usage: $0 {start|stop|status|run}" ;;
 esac
 
