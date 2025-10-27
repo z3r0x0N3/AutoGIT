@@ -173,7 +173,7 @@ def get_service_status(service_name):
 
 
 
-def sub(command)
+def sub(command):
     sub = subprocess
     print(sub)
     return sub
