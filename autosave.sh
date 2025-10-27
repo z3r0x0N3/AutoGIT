@@ -7,7 +7,7 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 
 # --- CONFIG: adjust these if you want different file locations -------------
-WATCH_FILE="${WATCH_FILE:-$HOME/.autogit/dirs_autosave_main.txt}"
+WATCH_FILE="${WATCH_FILE:-$HOME/.autogit/autosave_dirs_main.txt}"
 CLONE_FILE="${CLONE_FILE:-$HOME/.autogit/dirs_autosave_clone.txt}"
 LOG_FILE="${LOG_FILE:-$HOME/.autogit/dirwatch.log}"
 INTERVAL="${INTERVAL:-2}"    # seconds between scans
