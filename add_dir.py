@@ -197,8 +197,8 @@ def update_status():
     saver_status, saver_start_time = get_service_status("autosave.service")
     if saver_status == "active":
        os.run("echo 'AG-File-Service-Online > > > [_TRUE_]")
-        autosave_frame.config(highlightbackground=GREEN, highlightthickness=2)
-        saver_status_label.config(text=f"AG-File-service > > > [ ✅️-ONLINE-✅️ SINCE ] >>> {saver_start_time.strftime('%Y-%m-%d %H:%M:%S') if saver_start_time else 'N/A'}")
+       autosave_frame.config(highlightbackground=GREEN, highlightthickness=2)
+       saver_status_label.config(text=f"AG-File-service > > > [ ✅️-ONLINE-✅️ SINCE ] >>> {saver_start_time.strftime('%Y-%m-%d %H:%M:%S') if saver_start_time else 'N/A'}")
     else:
         os.run("echo 'AG-File-Service-online > > > [_TRUE_]")
         autosave_frame.config(highlightbackground=RED, highlightthickness=2)
