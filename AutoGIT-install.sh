@@ -9,9 +9,10 @@ SERVICE_DIR="$HOME/.config/systemd/user"
 TOKEN_FILE="$AUTH_DIR/.GIT_token"
 MAIN_FILE="$AUTOGIT_DIR/dirs_main.txt"
 CLONE_FILE="$AUTOGIT_DIR/dirs_clone.txt"
-AUTOSAVE_FILE="$AUTOGIT_DIR/files_autosave.txt"
+AUTOSAVE_FILE="$AUTOGIT_DIR/autosave_dirs_main.txt"
+AUTOSAVE_CLONE_FILE="$AUTOGIT_DIR/autosave_dirs_clone.txt"
 GIT_SCRIPT_NAME="autogit.sh"
-SAVE_SCRIPT_NAME="autosave.sh"
+SAVE_SCRIPT_NAME="autosave_dirwatch.sh"
 GIT_SERVICE_FILE="$SERVICE_DIR/autogit.service"
 SAVE_SERVICE_FILE="$SERVICE_DIR/autosave.service"
 INSTALL_DIR="$(pwd)"
@@ -22,26 +23,9 @@ warn() { echo -e "\033[1;33m[!]\033[0m $*"; }
 err() { echo -e "\033[1;31m[x]\033[0m $*" >&2; }
 
 # === 1. CHECK DEPENDENCIES ===
+# inotify-tools is optional; scripts use polling by default.
 if ! command -v inotifywait &> /dev/null; then
-    err "'inotifywait' command not found. Please install 'inotify-tools'."
-    read -rp "Attempt to install 'inotify-tools' now? (y/N) " choice
-    if [[ "$choice" =~ ^[Yy]$ ]]; then
-        if command -v apt-get &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y inotify-tools
-        elif command -v dnf &> /dev/null; then
-            sudo dnf install -y inotify-tools
-        elif command -v yum &> /dev/null; then
-            sudo yum install -y inotify-tools
-        elif command -v pacman &> /dev/null; then
-            sudo pacman -S --noconfirm inotify-tools
-        else
-            err "Could not determine package manager. Please install 'inotify-tools' manually."
-            exit 1
-        fi
-    else
-        err "Installation aborted by user."
-        exit 1
-    fi
+    warn "'inotifywait' not found. Proceeding without it (optional)."
 fi
 
 
@@ -71,7 +55,7 @@ else
 fi
 
 # === 6. CREATE WATCH FILES ===
-for f in "$MAIN_FILE" "$CLONE_FILE" "$AUTOSAVE_FILE"; do
+for f in "$MAIN_FILE" "$CLONE_FILE" "$AUTOSAVE_FILE" "$AUTOSAVE_CLONE_FILE"; do
     if [[ ! -f "$f" ]]; then
         echo "# Auto-generated file" > "$f"
         log "Created $f"

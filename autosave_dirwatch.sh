@@ -26,7 +26,9 @@ IFS=$'\n\t'
 WATCH_FILE="${WATCH_FILE:-$HOME/.autogit/autosave_dirs_main.txt}"
 CLONE_FILE="${CLONE_FILE:-$HOME/.autogit/autosave_dirs_clone.txt}"
 LOG_FILE="${LOG_FILE:-$HOME/.autogit/dirwatch.log}"
+PID_FILE="${PID_FILE:-$HOME/.autogit/autosave.pid}"
 INTERVAL="${INTERVAL:-.2}"  # seconds between detection cycles
+SCRIPT_NAME="$(basename "$0")"
 
 # ---------------------------------------------------------------------------
 # Ensure necessary directories and files exist.  The watch and clone
@@ -34,7 +36,37 @@ INTERVAL="${INTERVAL:-.2}"  # seconds between detection cycles
 # none exists.
 ensure_paths() {
   mkdir -p "$(dirname "$WATCH_FILE")"
-  touch "$WATCH_FILE" "$LOG_FILE"
+  touch "$WATCH_FILE" "$CLONE_FILE" "$LOG_FILE"
+}
+
+log_line() {
+  printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" >> "$LOG_FILE"
+}
+
+is_process_running() {
+  [[ -f "$PID_FILE" ]] || return 1
+  local pid
+  pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+  [[ "$pid" =~ ^[0-9]+$ ]] || { rm -f "$PID_FILE"; return 1; }
+  if kill -0 "$pid" 2>/dev/null; then
+    return 0
+  fi
+  rm -f "$PID_FILE"
+  return 1
+}
+
+write_pid() {
+  echo "$$" > "$PID_FILE"
+}
+
+clear_pid() {
+  if [[ -f "$PID_FILE" ]]; then
+    local pid
+    pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+    if [[ "$pid" == "$$" ]]; then
+      rm -f "$PID_FILE"
+    fi
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -72,7 +104,7 @@ update_main_if_needed() {
   fi
   mv "$CLONE_TMP" "$WATCH_FILE"
   cp "$WATCH_FILE" "$CLONE_FILE"
-  printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "[REPLACED] Updated $WATCH_FILE from new clone" >> "$LOG_FILE"
+  log_line "[REPLACED] Updated $WATCH_FILE from new clone"
 }
 
 # ---------------------------------------------------------------------------
@@ -105,12 +137,12 @@ single_cycle() {
     update_clone_line "$dir" "$new_int"
     if [[ "$new_int" != "$old_int" ]]; then
       changes=$((changes + 1))
-      printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "[CHANGE] $dir: $old_int -> $new_int" >> "$LOG_FILE"
+      log_line "[CHANGE] $dir: $old_int -> $new_int"
     fi
   done
   # Replace main file if any changes detected
   update_main_if_needed
-  printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "[INFO] Cycle complete (changes=$changes)" >> "$LOG_FILE"
+  log_line "[INFO] Cycle complete (changes=$changes)"
 }
 
 # ---------------------------------------------------------------------------
@@ -119,6 +151,9 @@ single_cycle() {
 # replacements and normal cycle completions.
 run_loop() {
   ensure_paths
+  write_pid
+  trap 'clear_pid' EXIT INT TERM
+  log_line "[INFO] AutoSave loop started (PID $$, interval ${INTERVAL}s)"
   while true; do
     CLONE_TMP="$(mktemp -p "$(dirname "$CLONE_FILE")" autosave_clone.XXXXXX)"
     single_cycle
@@ -127,19 +162,105 @@ run_loop() {
   done
 }
 
+run_once() {
+  ensure_paths
+  CLONE_TMP="$(mktemp -p "$(dirname "$CLONE_FILE")" autosave_clone.XXXXXX)"
+  single_cycle
+  rm -f "$CLONE_TMP" 2>/dev/null || true
+}
+
+start_service() {
+  ensure_paths
+  if is_process_running; then
+    echo "AutoSave watcher already running (PID $(cat "$PID_FILE"))"
+    return 0
+  fi
+  nohup env WATCH_FILE="$WATCH_FILE" CLONE_FILE="$CLONE_FILE" LOG_FILE="$LOG_FILE" \
+    PID_FILE="$PID_FILE" INTERVAL="$INTERVAL" "$0" run-loop >/dev/null 2>&1 &
+  echo "AutoSave watcher started (PID $!)"
+}
+
+stop_service() {
+  if ! is_process_running; then
+    echo "AutoSave watcher not running"
+    return 0
+  fi
+  local pid
+  pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+  if [[ -n "$pid" ]]; then
+    kill "$pid" 2>/dev/null || true
+  fi
+  rm -f "$PID_FILE"
+  echo "Sent termination to AutoSave watcher${pid:+ (PID $pid)}"
+}
+
+status_service() {
+  if is_process_running; then
+    echo "AutoSave watcher running (PID $(cat "$PID_FILE"))"
+  else
+    echo "AutoSave watcher not running"
+  fi
+}
+
 # ---------------------------------------------------------------------------
-# CLI dispatch.  Use run-loop for continuous monitoring, or run-once
-# for a single detection pass (useful for testing or manual update).
-case "${1:-}" in
-  run-loop) run_loop ;;
-  run-once)
-    ensure_paths
-    CLONE_TMP="$(mktemp -p "$(dirname "$CLONE_FILE")" autosave_clone.XXXXXX)"
-    single_cycle
-    rm -f "$CLONE_TMP" 2>/dev/null || true
-    ;;
-  *)
-    echo "Usage: $0 run-loop | run-once" >&2
+# CLI dispatch.
+usage() {
+  cat <<EOF
+Usage: $SCRIPT_NAME [options] <start|stop|status|run-loop|run-once>
+
+Options:
+  -i, --interval <seconds>  Override cycle interval (default: ${INTERVAL})
+  -h, --help                Show this help message
+
+Environment overrides:
+  WATCH_FILE, CLONE_FILE, LOG_FILE, PID_FILE, INTERVAL
+EOF
+}
+
+parse_args_and_dispatch() {
+  local args=("$@") cmd="" idx=0 count="${#args[@]}"
+  while [[ "$idx" -lt "$count" ]]; do
+    local token="${args[$idx]}"
+    case "$token" in
+      start|stop|status|run-loop|run-once)
+        cmd="$token"
+        idx=$((idx + 1))
+        break
+        ;;
+      -i|--interval)
+        idx=$((idx + 1))
+        if [[ "$idx" -ge "$count" ]]; then
+          echo "Missing value for $token" >&2
+          exit 1
+        fi
+        INTERVAL="${args[$idx]}"
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        echo "Unknown option: $token" >&2
+        usage
+        exit 1
+        ;;
+    esac
+    idx=$((idx + 1))
+  done
+
+  if [[ -z "$cmd" ]]; then
+    usage
     exit 1
-    ;;
-esac
+  fi
+
+  case "$cmd" in
+    start)    start_service ;;
+    stop)     stop_service ;;
+    status)   status_service ;;
+    run-loop) run_loop ;;
+    run-once) run_once ;;
+    *) usage; exit 1 ;;
+  esac
+}
+
+parse_args_and_dispatch "$@"

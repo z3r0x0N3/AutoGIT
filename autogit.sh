@@ -125,7 +125,7 @@ replace_main_line() {
   local tmp; tmp="$(mktemp "$(dirname "$WATCH_FILE")/main.XXXXXX")"
   local replaced=0
   while IFS= read -r line || [[ -n "$line" ]]; do
-    if [[ "$line" == "$dir - ["* ]]; then
+    if [[ "$line" == "$dir" ]] || [[ "$line" == "$dir - ["* ]]; then
       printf '%s - [ %s ]\n' "$dir" "$new_int" >> "$tmp"; replaced=1
     else
       printf '%s\n' "$line" >> "$tmp"
@@ -137,9 +137,23 @@ replace_main_line() {
 
 # ===== GitHub + Git integration (PUBLIC repo auto-creation) ===================
 
+read_token_trimmed() {
+  # Read token and strip any trailing newlines/CRs to avoid malformed headers
+  # or credentials lines.
+  if [[ -f "$TOKEN_FILE" ]]; then
+    tr -d '\r\n' < "$TOKEN_FILE" 2>/dev/null || true
+  fi
+}
+
 ensure_token() {
   if [[ ! -f "$TOKEN_FILE" ]]; then
     log "No GitHub token at $TOKEN_FILE"
+    return 1
+  fi
+  local tok
+  tok="$(read_token_trimmed)"
+  if [[ -z "$tok" ]]; then
+    log "Empty GitHub token at $TOKEN_FILE"
     return 1
   fi
   return 0
@@ -148,7 +162,7 @@ ensure_token() {
 # Writes a credential line for GitHub into ~/.git-credentials if missing
 ensure_credential_entry() {
   local repo_name="$1"
-  local token; token="$(<"$TOKEN_FILE")"
+  local token; token="$(read_token_trimmed)"
   local cred_file="$HOME/.git-credentials"
   local cred_line="https://${GIT_USER}:${token}@${GITHUB_HOST}/${GIT_USER}/${repo_name}.git"
 
@@ -163,7 +177,7 @@ ensure_credential_entry() {
 # Ensure GitHub repo exists (PUBLIC). If 404, create it.
 ensure_remote_repo_exists_public() {
   local repo_name="$1"
-  local token; token="$(<"$TOKEN_FILE")"
+  local token; token="$(read_token_trimmed)"
   local status
   status="$(curl -s -o /dev/null -w '%{http_code}' \
     -H "Authorization: token ${token}" \
@@ -221,6 +235,12 @@ commit_and_push() {
   local msg="Auto backup: $(date '+%Y-%m-%d %H:%M:%S')"
   git -C "$dir" commit -m "$msg" >/dev/null 2>&1 || { log "git commit failed: $dir"; return 1; }
 
+  # If no remote configured, stop after local commit
+  if ! git -C "$dir" remote get-url origin >/dev/null 2>&1; then
+    log "Committed locally in $dir (no remote configured)"
+    return 0
+  fi
+
   # best-effort rebase (noisy failures are fine)
   git -C "$dir" pull --rebase origin "$BRANCH" >/dev/null 2>&1 || true
 
@@ -239,16 +259,22 @@ update_main_and_commit() {
   replace_main_line "$dir" "$new_int"
   log "Change detected for $dir ($old_int -> $new_int)"
 
-  # Ensure token present
+  # If no token, still commit locally (skip remote ensure)
   if ! ensure_token; then
-    log "Skipping git actions (missing token: $TOKEN_FILE)"
+    if [[ ! -d "$dir/.git" ]]; then
+      log "Initializing local git repo in $dir (no token)"
+      git -C "$dir" init -b "$BRANCH" >/dev/null 2>&1 || true
+    fi
+    git -C "$dir" config user.name "$GIT_USER" >/dev/null 2>&1 || true
+    git -C "$dir" config user.email "${GIT_USER}@users.noreply.github.com" >/dev/null 2>&1 || true
+    commit_and_push "$dir"
     return
   fi
 
-  # Ensure local repo + PUBLIC remote
+  # Ensure local repo + PUBLIC remote when token present
   ensure_local_repo_and_remote "$dir"
 
-  # Commit/push
+  # Commit and push
   commit_and_push "$dir"
 }
 
@@ -299,6 +325,9 @@ single_cycle() {
   CURRENT_CLONE_TMP=""
 
   log "Cycle complete (processed $processed directories)"
+  if [[ "$processed" -eq 0 ]]; then
+    log "No directories to process. Add entries to $WATCH_FILE"
+  fi
 }
 
 # ----- Loop / Service ---------------------------------------------------------
@@ -373,4 +402,3 @@ parse_args_and_dispatch() {
 }
 
 parse_args_and_dispatch "$@"
-

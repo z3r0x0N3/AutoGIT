@@ -1,2 +1,1 @@
-# /home/directory/to/monitor/and_upload - [ 0000000000000000 ]
-
+/home/_0n3_/projects/AutoGIT/tmp_demo_repo - [ 0000000202313214 ]
