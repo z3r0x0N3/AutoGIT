@@ -121,23 +121,26 @@ single_cycle() {
     trimmed="${trimmed%${trimmed##*[![:space:]]}}"
     # Skip blank lines and comments
     [[ -z "$trimmed" || "$trimmed" == \#* ]] && continue
-    local dir old_int
+    local label base_dir old_int
     if [[ "$trimmed" == *" - ["* ]]; then
-      dir="${trimmed%% - [*}"
+      label="${trimmed%% - [*}"
       old_int="$(printf '%s\n' "$trimmed" | grep -oE '\[[0-9]{1,16}\]' | tr -dc '0-9' || true)"
       [[ -z "$old_int" ]] && old_int="0000000000000000"
     else
-      dir="$trimmed"
+      label="$trimmed"
       old_int="0000000000000000"
     fi
+    # Support optional tags like ::sync; strip tags for filesystem ops, but
+    # preserve the label when writing back.
+    base_dir="${label%%::*}"
     # Only process existing directories
-    [[ -d "$dir" ]] || continue
+    [[ -d "$base_dir" ]] || continue
     local new_int
-    new_int="$(calc_int_for_dir "$dir")"
-    update_clone_line "$dir" "$new_int"
+    new_int="$(calc_int_for_dir "$base_dir")"
+    update_clone_line "$label" "$new_int"
     if [[ "$new_int" != "$old_int" ]]; then
       changes=$((changes + 1))
-      log_line "[CHANGE] $dir: $old_int -> $new_int"
+      log_line "[CHANGE] $base_dir: $old_int -> $new_int"
     fi
   done
   # Replace main file if any changes detected

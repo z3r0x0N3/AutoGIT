@@ -12,6 +12,7 @@ CLONE_FILE="$AUTOGIT_DIR/dirs_clone.txt"
 AUTOSAVE_FILE="$AUTOGIT_DIR/autosave_dirs_main.txt"
 AUTOSAVE_CLONE_FILE="$AUTOGIT_DIR/autosave_dirs_clone.txt"
 GIT_SCRIPT_NAME="autogit.sh"
+GIT_WRAPPER_NAME="autogit_dirwatch.sh"
 SAVE_SCRIPT_NAME="autosave_dirwatch.sh"
 GIT_SERVICE_FILE="$SERVICE_DIR/autogit.service"
 SAVE_SERVICE_FILE="$SERVICE_DIR/autosave.service"
@@ -63,7 +64,7 @@ for f in "$MAIN_FILE" "$CLONE_FILE" "$AUTOSAVE_FILE" "$AUTOSAVE_CLONE_FILE"; do
 done
 
 # === 7. MOVE SCRIPTS ===
-for script in "$GIT_SCRIPT_NAME" "$SAVE_SCRIPT_NAME"; do
+for script in "$GIT_SCRIPT_NAME" "$GIT_WRAPPER_NAME" "$SAVE_SCRIPT_NAME"; do
     if [[ -f "$INSTALL_DIR/$script" ]]; then
         cp "$INSTALL_DIR/$script" "$BIN_DIR/"
         chmod +x "$BIN_DIR/$script"
@@ -125,5 +126,9 @@ Log files: $AUTOGIT_DIR/
 Services: autogit.service, autosave.service
 
 Use 'systemctl --user [status|start|stop] [autogit|autosave].service' to manage.
+
+Quick start:
+- Start AutoGit (no systemd): $BIN_DIR/$GIT_WRAPPER_NAME start
+- Start AutoGit (systemd): systemctl --user enable --now autogit.service
 
 EOM

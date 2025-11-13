@@ -94,6 +94,15 @@ def write_lines(file_path: str, lines: list[str]) -> None:
         for line in lines:
             fh.write(f"{line}\n")
 
+def sanitize_autosave_entries(entries: list[str]) -> list[str]:
+    """Ensure AutoSave entries are plain directories (strip any ::tags)."""
+    sanitized: list[str] = []
+    for e in entries:
+        base = e.split("::")[0]
+        if base and base not in sanitized:
+            sanitized.append(base)
+    return sanitized
+
 # --- Directory Watcher (Git) Functions --------------------------------------
 def add_dir() -> None:
     """Prompt user for a directory and add it to Git watch list."""
@@ -135,17 +144,12 @@ def add_autosave_dir() -> None:
     path = filedialog.askdirectory(title="Select directory to auto-save")
     if not path:
         return
-    entries = read_lines(AUTOSAVE_FILE)
-    plain_paths = [e.split("::")[0] for e in entries]
-    if path in plain_paths:
+    entries = sanitize_autosave_entries(read_lines(AUTOSAVE_FILE))
+    if path in entries:
         messagebox.showinfo("AutoGit", "That directory is already in the AutoSave list.")
         return
 
-    entry = path
-    if autosave_sync_var.get():
-        entry += "::sync"
-
-    entries.append(entry)
+    entries.append(path)
     write_lines(AUTOSAVE_FILE, entries)
     refresh_autosave_list()
     messagebox.showinfo("AutoGit", f"Added to AutoSave:\n{path}")
@@ -156,24 +160,22 @@ def remove_selected_autosave_dir() -> None:
     if not selection:
         return
     idx = selection[0]
-    entries = read_lines(AUTOSAVE_FILE)
+    entries = sanitize_autosave_entries(read_lines(AUTOSAVE_FILE))
     removed = entries.pop(idx)
     write_lines(AUTOSAVE_FILE, entries)
     refresh_autosave_list()
-    removed_path = removed.split("::")[0]
-    messagebox.showinfo("AutoGit", f"Removed from AutoSave:\n{removed_path}")
+    messagebox.showinfo("AutoGit", f"Removed from AutoSave:\n{removed}")
 
 def refresh_autosave_list() -> None:
     """Refresh the display of AutoSave watch list."""
     autosave_listbox.delete(0, tk.END)
-    entries = read_lines(AUTOSAVE_FILE)
+    raw_entries = read_lines(AUTOSAVE_FILE)
+    entries = sanitize_autosave_entries(raw_entries)
+    # If file contained tags, write back sanitized entries to keep it clean
+    if entries != raw_entries:
+        write_lines(AUTOSAVE_FILE, entries)
     for e in entries:
-        if "::sync" in e:
-            path = e.split("::")[0]
-            display_text = f"{path} (sync)"
-        else:
-            display_text = e
-        autosave_listbox.insert(tk.END, display_text)
+        autosave_listbox.insert(tk.END, e)
     autosave_status_var.set(f"Auto-saving {len(entries)} directories")
 
 # --- System Functions --------------------------------------------------------
@@ -268,7 +270,7 @@ def build_gui() -> None:
     ensure_files()
     global root, dir_frame, dir_listbox, dir_status_var
     global autosave_frame, autosave_listbox, autosave_status_var
-    global git_status_label, saver_status_label, autosave_sync_var
+    global git_status_label, saver_status_label
 
     root.title("AutoGit Manager")
     root.geometry("800x650")
@@ -315,20 +317,6 @@ def build_gui() -> None:
     saver_status_label.pack(anchor="w")
 
     tk.Label(autosave_frame, text="AutoSave Directories", **LABEL_STYLE).pack(anchor="w", pady=5)
-
-    autosave_sync_var = tk.BooleanVar()
-    sync_check = tk.Checkbutton(
-        autosave_frame,
-        text="Enable Real-time Git Sync",
-        variable=autosave_sync_var,
-        bg=BG_COLOR,
-        fg=CYAN,
-        selectcolor=BG_COLOR,
-        activebackground=BG_COLOR,
-        activeforeground=CYAN,
-        font=("Consolas", 10),
-    )
-    sync_check.pack(anchor="w")
 
     autosave_listbox = tk.Listbox(autosave_frame, height=15, **LISTBOX_STYLE)
     autosave_listbox.pack(fill="both", expand=True, pady=5)
