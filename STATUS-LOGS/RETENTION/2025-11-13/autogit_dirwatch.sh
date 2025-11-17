@@ -89,3 +89,4 @@ parse_args_and_dispatch() {
 }
 
 parse_args_and_dispatch "$@"
+

@@ -1,0 +1,23 @@
+digraph AutoGIT {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+
+  "add_dir.py" -> "autogit.sh" [label="start_daemon"];
+  "add_dir.py" -> "autosave_dirwatch.sh" [label="start_daemon"];
+  "add_dir.py" -> "systemctl --user" [label="status"];
+
+  "autogit_dirwatch.sh" -> "autogit.sh" [label="forward"];
+
+  "AutoGIT-install.sh" -> "autogit.sh";
+  "AutoGIT-install.sh" -> "autogit_dirwatch.sh";
+  "AutoGIT-install.sh" -> "autosave_dirwatch.sh";
+  "AutoGIT-install.sh" -> "Systemd (user)";
+
+  "autogit.sh" -> "Git CLI";
+  "autogit.sh" -> "GitHub API (api.github.com)";
+  "autogit.sh" -> "~/.AUTH/.GIT_token" [label="read"];
+  "autogit.sh" -> "~/.git-credentials" [label="write"];
+
+  "autosave_dirwatch.sh" -> "Filesystem (~/.autogit)";
+}
+

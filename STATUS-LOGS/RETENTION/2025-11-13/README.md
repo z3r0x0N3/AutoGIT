@@ -21,3 +21,4 @@ Notes
 
 - AutoGit reads a GitHub token from `~/.AUTH/.GIT_token`. Ensure it contains a valid Personal Access Token with repo scope.
 - Credentials are stored in `~/.git-credentials`. If you previously ran an older wrapper that defaulted `GIT_USER` to your local username, you may need to remove any `github.com/_localuser_/...` entries from that file.
+
