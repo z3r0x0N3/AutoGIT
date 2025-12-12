@@ -306,7 +306,7 @@ single_cycle() {
     [[ -z "$dir" ]] && { log "Skipping malformed line: $trimmed"; continue; }
     [[ -d "$dir" ]] || { log "Directory not found: $dir"; continue; }
 
-    old_int="$(printf '%s\n' "$trimmed" | grep -oE '\[[0-9]{1,16}\]' | tr -dc '0-9' || true)"
+    old_int="$(printf '%s\n' "$trimmed" | grep -oE '\[[[:space:]]*[0-9]{1,16}[[:space:]]*\]' | tr -dc '0-9' || true)"
     [[ -z "$old_int" ]] && old_int="0000000000000000"
 
     if ! new_int="$(calc_int_for_dir "$dir")"; then
