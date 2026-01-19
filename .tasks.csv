@@ -1,0 +1,19 @@
+phase_id,operation_id,function_id,job_id,task_id,task_name,task_description,source_atlas_file,source_section,dependency_task_ids,estimated_complexity,status
+PHASE-01,OP-01,FN-01,JOB-01,TASK-0001,Enumerate_watch_roots,Collect all directories listed in ~/.autogit/dirs_main.txt and ~/.autogit/dirs_clone.txt,AutoGIT.md,System Topology,,low,Pending
+PHASE-01,OP-01,FN-02,JOB-02,TASK-0002,Validate_runtime_paths,Ensure ~/.autogit directories and watch/clone/log/pid files exist and are writable,AutoGIT.md,System Topology,,low,Pending
+PHASE-01,OP-01,FN-03,JOB-03,TASK-0003,Load_ignore_patterns,Parse ~/.autogit/ignore_globs.txt into normalized patterns,AutoGIT.md,Ignore & Change Detection,,low,Pending
+PHASE-01,OP-02,FN-04,JOB-04,TASK-0004,Compute_directory_checksums,Generate 16-digit checksum per watched directory using file size and mtime excluding ignores,AutoGIT.md,Core Behavior (autogit.sh),TASK-0001|TASK-0003,moderate,Pending
+PHASE-01,OP-02,FN-05,JOB-05,TASK-0005,Detect_directory_changes,Compare current checksums to stored values to identify modified directories,AutoGIT.md,Core Behavior (autogit.sh),TASK-0004,moderate,Pending
+PHASE-02,OP-03,FN-06,JOB-06,TASK-0006,Ensure_git_token,Verify GitHub token exists at ~/.AUTH/.GIT_token and is non-empty,AutoGIT.md,GitHub Integration,,low,Pending
+PHASE-02,OP-03,FN-07,JOB-07,TASK-0007,Ensure_public_repo,Create or verify PUBLIC GitHub repo for each watched directory via API,AutoGIT.md,GitHub Integration,TASK-0006,moderate,Pending
+PHASE-02,OP-03,FN-08,JOB-08,TASK-0008,Configure_local_repo,Initialize git, set user/email/credential.helper, and set origin URL per watched directory,AutoGIT.md,GitHub Integration,TASK-0007,moderate,Pending
+PHASE-03,OP-04,FN-09,JOB-09,TASK-0009,Commit_changes,Stage all modifications in a changed directory and commit with timestamped message,AutoGIT.md,Core Behavior (autogit.sh),TASK-0005|TASK-0008,moderate,Pending
+PHASE-03,OP-04,FN-10,JOB-10,TASK-0010,Push_changes,Pull --rebase then push committed changes to origin/BRANCH when remote present,AutoGIT.md,Core Behavior (autogit.sh),TASK-0009,moderate,Pending
+PHASE-04,OP-05,FN-11,JOB-11,TASK-0011,Manage_watchers,Start/stop/status control of autogit_dirwatch.sh and autosave_dirwatch.sh or systemd units,AutoGIT.md,Watcher Wrappers,,low,Pending
+PHASE-04,OP-05,FN-12,JOB-12,TASK-0012,Record_runtime_metrics,Append log entries for change detection, commits, pushes, and dropped frames to ~/.autogit/auto_git.log,AutoGIT.md,Data & Logs,,low,Pending
+PHASE-05,OP-06,FN-13,JOB-13,TASK-0013,Apply_ignore_updates,Refresh ignore patterns when ignore_globs.txt changes and re-run detection,AutoGIT.md,Ignore & Change Detection,TASK-0003,low,Pending
+PHASE-05,OP-06,FN-14,JOB-14,TASK-0014,Handle_no_token_path,If token missing, initialize local git and commit locally without remote,AutoGIT.md,Core Behavior (autogit.sh),TASK-0006,low,Pending
+PHASE-06,OP-07,FN-15,JOB-15,TASK-0015,Rotate_credentials,Check ~/.git-credentials for stale entries and update with current GIT_USER and repo list,AutoGIT.md,GitHub Integration,,moderate,Pending
+PHASE-06,OP-07,FN-16,JOB-16,TASK-0016,Audit_logs_and_state,Review auto_git.log and dirs_clone.txt for discrepancies and reconcile watch list,AutoGIT.md,Data & Logs,,moderate,Pending
+PHASE-07,OP-08,FN-17,JOB-17,TASK-0017,Test_autosave_flow,Run autosave_dirwatch.sh on autosave list ensuring snapshots occur without git operations,AutoGIT.md,Watcher Wrappers,,low,Pending
+PHASE-07,OP-08,FN-18,JOB-18,TASK-0018,Validate_environment_overrides,Exercise env overrides (INTERVAL, BRANCH, WATCH_FILE) and confirm behavior matches config,AutoGIT.md,Core Behavior (autogit.sh),,moderate,Pending
