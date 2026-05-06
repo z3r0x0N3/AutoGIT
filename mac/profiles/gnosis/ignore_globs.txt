@@ -1,0 +1,10 @@
+# GNOSIS profile ignore suggestions
+*.pyc
+__pycache__
+*.tmp
+*.swp
+*.swo
+*.log
+venv
+.venv
+node_modules

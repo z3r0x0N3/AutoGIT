@@ -4,11 +4,12 @@
   "origin": "Local",
   "origin_path": null,
   "creation_timestamp": "2026-01-17T16:39:41",
-  "preferred_credentials": "Z3R0x0N3",
+  "preferred_credentials": "DIVINE",
   "auto_commit_enabled": false,
   "localsync_enabled": false,
   "localsync_path": null,
-  "last_known_commit": "2e049c223c8bb2332a27c4cada076112347d4f74",
+  "last_known_commit": "9871c1055c8eb03b8435698d957384575f9ab568",
   "redacted": false,
-  "tags": []
+  "tags": [],
+  "last_focused_timestamp": "2026-05-05T21:48:28"
 }

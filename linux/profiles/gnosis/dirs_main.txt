@@ -1,0 +1,5 @@
+# GNOSIS profile (AutoGit) entries
+# Tags after :: are supported for categorization.
+__HOME__/PROJECTS/GNOSIS::root
+__HOME__/PROJECTS/GNOSIS/AUDITS::governance
+__HOME__/PROJECTS/GNOSIS/CHANGELOG::governance

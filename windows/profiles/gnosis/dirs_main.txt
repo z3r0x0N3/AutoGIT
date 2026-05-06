@@ -1,0 +1,4 @@
+# GNOSIS profile (AutoGit) entries for Git Bash paths
+__HOME_BASH__/PROJECTS/GNOSIS::root
+__HOME_BASH__/PROJECTS/GNOSIS/AUDITS::governance
+__HOME_BASH__/PROJECTS/GNOSIS/CHANGELOG::governance

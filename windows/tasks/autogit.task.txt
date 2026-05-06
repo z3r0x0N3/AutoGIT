@@ -1,0 +1,3 @@
+Task Name: \AutoGIT\AutoGitLoop
+Command: bash -lc "$HOME/.autogit/run_autogit_loop.sh"
+Trigger: At log on

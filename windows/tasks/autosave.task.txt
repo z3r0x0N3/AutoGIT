@@ -1,0 +1,3 @@
+Task Name: \AutoGIT\AutoSaveLoop
+Command: bash -lc "$HOME/.autogit/run_autosave_loop.sh"
+Trigger: At log on

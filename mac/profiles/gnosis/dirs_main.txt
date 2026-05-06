@@ -1,0 +1,4 @@
+# GNOSIS profile (AutoGit) entries
+__HOME__/PROJECTS/GNOSIS::root
+__HOME__/PROJECTS/GNOSIS/AUDITS::governance
+__HOME__/PROJECTS/GNOSIS/CHANGELOG::governance
