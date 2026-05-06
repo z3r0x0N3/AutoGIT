@@ -29,6 +29,7 @@ AUTOGIT_STDOUT="${AUTOGIT_STDOUT:-$AUTOGIT_DIR/autogit.launchd.out.log}"
 AUTOGIT_STDERR="${AUTOGIT_STDERR:-$AUTOGIT_DIR/autogit.launchd.err.log}"
 AUTOSAVE_STDOUT="${AUTOSAVE_STDOUT:-$AUTOGIT_DIR/autosave.launchd.out.log}"
 AUTOSAVE_STDERR="${AUTOSAVE_STDERR:-$AUTOGIT_DIR/autosave.launchd.err.log}"
+GNOSIS_DISCOVERY_FILE="${GNOSIS_DISCOVERY_FILE:-$AUTOGIT_DIR/gnosis_autogit.env}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MAC_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -42,6 +43,7 @@ SAVE_SCRIPT_SRC="$REPO_ROOT/autosave_dirwatch.sh"
 
 AUTOGIT_PLIST="$LAUNCH_AGENTS_DIR/com.autogit.agent.plist"
 AUTOSAVE_PLIST="$LAUNCH_AGENTS_DIR/com.autosave.agent.plist"
+AUTOGIT_EXECUTABLE="$BIN_DIR/autogit"
 
 log() { echo -e "\033[1;32m[*]\033[0m $*"; }
 warn() { echo -e "\033[1;33m[!]\033[0m $*"; }
@@ -77,6 +79,13 @@ append_unique_entries() {
       printf '%s\n' "$line" >> "$target_file"
     fi
   done < "$source_file"
+}
+
+ensure_path_entry() {
+  local rc_file="$1"
+  local line='export PATH="$HOME/bin:$PATH"'
+  [[ -f "$rc_file" ]] || : > "$rc_file"
+  grep -Fqx "$line" "$rc_file" || printf '%s\n' "$line" >> "$rc_file"
 }
 
 render_plist() {
@@ -158,6 +167,24 @@ cp "$GIT_WRAPPER_SRC" "$BIN_DIR/autogit_dirwatch.sh"
 cp "$SAVE_SCRIPT_SRC" "$BIN_DIR/autosave_dirwatch.sh"
 chmod +x "$BIN_DIR/autogit.sh" "$BIN_DIR/autogit_dirwatch.sh" "$BIN_DIR/autosave_dirwatch.sh"
 
+cat > "$AUTOGIT_EXECUTABLE" <<EOF
+#!/usr/bin/env bash
+set -Eeuo pipefail
+exec "$BIN_DIR/autogit_dirwatch.sh" "\$@"
+EOF
+chmod +x "$AUTOGIT_EXECUTABLE"
+ensure_path_entry "$HOME/.zshrc"
+ensure_path_entry "$HOME/.bash_profile"
+
+cat > "$GNOSIS_DISCOVERY_FILE" <<EOF
+AUTOGIT_EXECUTABLE=$AUTOGIT_EXECUTABLE
+AUTOGIT_WRAPPER=$BIN_DIR/autogit_dirwatch.sh
+AUTOGIT_CORE=$BIN_DIR/autogit.sh
+AUTOGIT_INSTALL_OS=macos
+AUTOGIT_WATCH_FILE=$MAIN_FILE
+AUTOGIT_AUTOSAVE_FILE=$AUTOSAVE_FILE
+EOF
+
 if [[ "$PROFILE" == "gnosis" ]]; then
   append_unique_entries "$PROFILE_DIR/gnosis/dirs_main.txt" "$MAIN_FILE"
   append_unique_entries "$PROFILE_DIR/gnosis/autosave_dirs_main.txt" "$AUTOSAVE_FILE"
@@ -192,6 +219,8 @@ Profile: $PROFILE
 GitHub user: $GIT_USER
 Watch file: $MAIN_FILE
 Autosave file: $AUTOSAVE_FILE
+GNOSIS discovery: $GNOSIS_DISCOVERY_FILE
+Autogit executable: $AUTOGIT_EXECUTABLE
 
 Manage agents:
   launchctl print gui/$UID/com.autogit.agent

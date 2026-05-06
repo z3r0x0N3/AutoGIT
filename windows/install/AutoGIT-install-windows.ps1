@@ -67,9 +67,12 @@ $CloneFileWin = Join-Path $AutoGitDirWin "dirs_clone.txt"
 $AutoSaveFileWin = Join-Path $AutoGitDirWin "autosave_dirs_main.txt"
 $AutoSaveCloneFileWin = Join-Path $AutoGitDirWin "autosave_dirs_clone.txt"
 $IgnoreFileWin = Join-Path $AutoGitDirWin "ignore_globs.txt"
+$GnosisDiscoveryWin = Join-Path $AutoGitDirWin "gnosis_autogit.env"
 
 $RunnerAutogit = Join-Path $AutoGitDirWin "run_autogit_loop.sh"
 $RunnerAutosave = Join-Path $AutoGitDirWin "run_autosave_loop.sh"
+$AutogitShimWin = Join-Path $BinDirWin "autogit"
+$AutogitCmdWin = Join-Path $BinDirWin "autogit.cmd"
 
 $BinDirBash = "$HomeBash/bin"
 $AutoGitDirBash = "$HomeBash/.autogit"
@@ -146,6 +149,13 @@ exec \"$BinDirBash/autosave_dirwatch.sh\" run-loop
 Set-Content -Path $RunnerAutogit -Value $RunnerAutogitContent -NoNewline
 Set-Content -Path $RunnerAutosave -Value $RunnerAutosaveContent -NoNewline
 
+$AutogitShimContent = @"
+#!/usr/bin/env bash
+set -Eeuo pipefail
+exec "$BinDirBash/autogit_dirwatch.sh" "`$@"
+"@
+Set-Content -Path $AutogitShimWin -Value $AutogitShimContent -NoNewline
+
 $BashExeCandidates = @(
   "C:\Program Files\Git\bin\bash.exe",
   "C:\Program Files (x86)\Git\bin\bash.exe"
@@ -163,8 +173,24 @@ if (-not $BashExe) {
   exit 1
 }
 
-$ActionAutoGit = New-ScheduledTaskAction -Execute $BashExe -Argument "-lc \"`$HOME/.autogit/run_autogit_loop.sh\""
-$ActionAutoSave = New-ScheduledTaskAction -Execute $BashExe -Argument "-lc \"`$HOME/.autogit/run_autosave_loop.sh\""
+$AutogitCmdContent = @"
+@echo off
+setlocal
+"$BashExe" -lc "bash `$HOME/bin/autogit %*"
+"@
+Set-Content -Path $AutogitCmdWin -Value $AutogitCmdContent -NoNewline
+
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if (-not $userPath) { $userPath = "" }
+$binToken = "$HomeWin\\bin"
+if (-not ($userPath -split ';' | Where-Object { $_.Trim() -ieq $binToken })) {
+  $newPath = ($userPath.TrimEnd(';') + ";" + $binToken).Trim(';')
+  [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+  Write-Info "Added $binToken to user PATH"
+}
+
+$ActionAutoGit = New-ScheduledTaskAction -Execute $BashExe -Argument "-lc ""bash `$HOME/.autogit/run_autogit_loop.sh"""
+$ActionAutoSave = New-ScheduledTaskAction -Execute $BashExe -Argument "-lc ""bash `$HOME/.autogit/run_autosave_loop.sh"""
 $Trigger = New-ScheduledTaskTrigger -AtLogOn
 $Principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
 $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 0)
@@ -183,10 +209,23 @@ if (-not $NoStart) {
   Start-ScheduledTask -TaskPath $TaskPath -TaskName "AutoSaveLoop" -ErrorAction SilentlyContinue
 }
 
+$DiscoveryContent = @"
+AUTOGIT_EXECUTABLE=$AutogitCmdWin
+AUTOGIT_EXECUTABLE_BASH=$AutogitShimWin
+AUTOGIT_WRAPPER=$BinDirWin\\autogit_dirwatch.sh
+AUTOGIT_CORE=$BinDirWin\\autogit.sh
+AUTOGIT_INSTALL_OS=windows
+AUTOGIT_WATCH_FILE=$MainFileWin
+AUTOGIT_AUTOSAVE_FILE=$AutoSaveFileWin
+"@
+Set-Content -Path $GnosisDiscoveryWin -Value $DiscoveryContent -NoNewline
+
 Write-Host ""
 Write-Host "AutoGIT Windows installation complete." -ForegroundColor Green
 Write-Host "Profile: $Profile"
 Write-Host "GitHub user: $GitUser"
 Write-Host "Watch file: $MainFileWin"
 Write-Host "Autosave file: $AutoSaveFileWin"
+Write-Host "GNOSIS discovery: $GnosisDiscoveryWin"
+Write-Host "Autogit executable: $AutogitCmdWin"
 Write-Host "Tasks: ${TaskPath}AutoGitLoop, ${TaskPath}AutoSaveLoop"
