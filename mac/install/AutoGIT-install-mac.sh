@@ -44,6 +44,7 @@ SAVE_SCRIPT_SRC="$REPO_ROOT/autosave_dirwatch.sh"
 AUTOGIT_PLIST="$LAUNCH_AGENTS_DIR/com.autogit.agent.plist"
 AUTOSAVE_PLIST="$LAUNCH_AGENTS_DIR/com.autosave.agent.plist"
 AUTOGIT_EXECUTABLE="$BIN_DIR/autogit"
+LAUNCHCTL_DOMAIN=""
 
 log() { echo -e "\033[1;32m[*]\033[0m $*"; }
 warn() { echo -e "\033[1;33m[!]\033[0m $*"; }
@@ -115,6 +116,39 @@ render_plist() {
     -e "s|__AUTOSAVE_STDOUT__|$AUTOSAVE_STDOUT|g" \
     -e "s|__AUTOSAVE_STDERR__|$AUTOSAVE_STDERR|g" \
     "$src" > "$dst"
+}
+
+resolve_launchctl_domain() {
+  # Prefer GUI domain for login sessions; fall back to user domain for
+  # non-GUI shells where gui/<uid> bootstrap is not supported.
+  if launchctl print "gui/$UID" >/dev/null 2>&1; then
+    LAUNCHCTL_DOMAIN="gui/$UID"
+  else
+    LAUNCHCTL_DOMAIN="user/$UID"
+  fi
+}
+
+bootstrap_agent() {
+  local plist="$1"
+  if launchctl bootstrap "$LAUNCHCTL_DOMAIN" "$plist" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # If selected domain fails (common in ssh/non-aqua sessions), try fallback.
+  local fallback=""
+  if [[ "$LAUNCHCTL_DOMAIN" == "gui/$UID" ]]; then
+    fallback="user/$UID"
+  else
+    fallback="gui/$UID"
+  fi
+
+  if launchctl bootstrap "$fallback" "$plist" >/dev/null 2>&1; then
+    LAUNCHCTL_DOMAIN="$fallback"
+    warn "launchctl domain fallback applied: $LAUNCHCTL_DOMAIN"
+    return 0
+  fi
+
+  return 1
 }
 
 while [[ $# -gt 0 ]]; do
@@ -198,17 +232,24 @@ fi
 render_plist "$LAUNCHD_TPL_DIR/com.autogit.agent.plist.tpl" "$AUTOGIT_PLIST"
 render_plist "$LAUNCHD_TPL_DIR/com.autosave.agent.plist.tpl" "$AUTOSAVE_PLIST"
 
-launchctl bootout "gui/$UID" "$AUTOGIT_PLIST" 2>/dev/null || true
-launchctl bootout "gui/$UID" "$AUTOSAVE_PLIST" 2>/dev/null || true
+resolve_launchctl_domain
+launchctl bootout "$LAUNCHCTL_DOMAIN" "$AUTOGIT_PLIST" 2>/dev/null || true
+launchctl bootout "$LAUNCHCTL_DOMAIN" "$AUTOSAVE_PLIST" 2>/dev/null || true
 
 if [[ "$NO_START" == "1" ]]; then
-  log "Launch agents installed (not started)"
+  log "Launch agents installed (not started). Domain: $LAUNCHCTL_DOMAIN"
 else
-  launchctl bootstrap "gui/$UID" "$AUTOGIT_PLIST"
-  launchctl bootstrap "gui/$UID" "$AUTOSAVE_PLIST"
-  launchctl kickstart -k "gui/$UID/com.autogit.agent" || true
-  launchctl kickstart -k "gui/$UID/com.autosave.agent" || true
-  log "Launch agents loaded and started"
+  if ! bootstrap_agent "$AUTOGIT_PLIST"; then
+    err "Failed to bootstrap autogit launch agent in gui/$UID and user/$UID domains"
+    exit 1
+  fi
+  if ! bootstrap_agent "$AUTOSAVE_PLIST"; then
+    err "Failed to bootstrap autosave launch agent in gui/$UID and user/$UID domains"
+    exit 1
+  fi
+  launchctl kickstart -k "$LAUNCHCTL_DOMAIN/com.autogit.agent" || true
+  launchctl kickstart -k "$LAUNCHCTL_DOMAIN/com.autosave.agent" || true
+  log "Launch agents loaded and started. Domain: $LAUNCHCTL_DOMAIN"
 fi
 
 cat <<EOM
@@ -223,6 +264,6 @@ GNOSIS discovery: $GNOSIS_DISCOVERY_FILE
 Autogit executable: $AUTOGIT_EXECUTABLE
 
 Manage agents:
-  launchctl print gui/$UID/com.autogit.agent
-  launchctl print gui/$UID/com.autosave.agent
+  launchctl print $LAUNCHCTL_DOMAIN/com.autogit.agent
+  launchctl print $LAUNCHCTL_DOMAIN/com.autosave.agent
 EOM
