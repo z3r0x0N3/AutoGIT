@@ -4,12 +4,12 @@
   "origin": "Local",
   "origin_path": null,
   "creation_timestamp": "2026-01-17T16:39:41",
-  "preferred_credentials": "DIVINE",
+  "preferred_credentials": "ipoole2000@gmail.com",
   "auto_commit_enabled": false,
   "localsync_enabled": false,
   "localsync_path": null,
-  "last_known_commit": "9871c1055c8eb03b8435698d957384575f9ab568",
+  "last_known_commit": "7c984395a67f5dcf7198bdc6248b11894e69fceb",
   "redacted": false,
   "tags": [],
-  "last_focused_timestamp": "2026-05-05T21:48:28"
+  "last_focused_timestamp": "2026-05-05T21:54:40"
 }

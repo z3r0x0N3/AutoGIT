@@ -25,6 +25,7 @@ AUTOGIT_LOG_FILE="${AUTOGIT_LOG_FILE:-$AUTOGIT_DIR/auto_git.log}"
 AUTOGIT_PID_FILE="${AUTOGIT_PID_FILE:-$AUTOGIT_DIR/auto_git.pid}"
 AUTOSAVE_LOG_FILE="${AUTOSAVE_LOG_FILE:-$AUTOGIT_DIR/dirwatch.log}"
 AUTOSAVE_PID_FILE="${AUTOSAVE_PID_FILE:-$AUTOGIT_DIR/autosave.pid}"
+GNOSIS_DISCOVERY_FILE="${GNOSIS_DISCOVERY_FILE:-$AUTOGIT_DIR/gnosis_autogit.env}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LINUX_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -39,6 +40,7 @@ SAVE_SCRIPT_NAME="autosave_dirwatch.sh"
 
 GIT_SERVICE_FILE="$SERVICE_DIR/autogit.service"
 SAVE_SERVICE_FILE="$SERVICE_DIR/autosave.service"
+AUTOGIT_EXECUTABLE="$BIN_DIR/autogit"
 
 log() { echo -e "\033[1;32m[*]\033[0m $*"; }
 warn() { echo -e "\033[1;33m[!]\033[0m $*"; }
@@ -105,6 +107,13 @@ append_unique_entries() {
   done < "$source_file"
 }
 
+ensure_path_entry() {
+  local rc_file="$1"
+  local line='export PATH="$HOME/bin:$PATH"'
+  [[ -f "$rc_file" ]] || : > "$rc_file"
+  grep -Fqx "$line" "$rc_file" || printf '%s\n' "$line" >> "$rc_file"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --profile)
@@ -159,6 +168,24 @@ cp "$CORE_DIR/$GIT_SCRIPT_NAME" "$BIN_DIR/$GIT_SCRIPT_NAME"
 cp "$WRAPPER_DIR/$GIT_WRAPPER_NAME" "$BIN_DIR/$GIT_WRAPPER_NAME"
 cp "$WRAPPER_DIR/$SAVE_SCRIPT_NAME" "$BIN_DIR/$SAVE_SCRIPT_NAME"
 chmod +x "$BIN_DIR/$GIT_SCRIPT_NAME" "$BIN_DIR/$GIT_WRAPPER_NAME" "$BIN_DIR/$SAVE_SCRIPT_NAME"
+
+cat > "$AUTOGIT_EXECUTABLE" <<EOF
+#!/usr/bin/env bash
+set -Eeuo pipefail
+exec "$BIN_DIR/$GIT_WRAPPER_NAME" "\$@"
+EOF
+chmod +x "$AUTOGIT_EXECUTABLE"
+ensure_path_entry "$HOME/.profile"
+ensure_path_entry "$HOME/.zshrc"
+
+cat > "$GNOSIS_DISCOVERY_FILE" <<EOF
+AUTOGIT_EXECUTABLE=$AUTOGIT_EXECUTABLE
+AUTOGIT_WRAPPER=$BIN_DIR/$GIT_WRAPPER_NAME
+AUTOGIT_CORE=$BIN_DIR/$GIT_SCRIPT_NAME
+AUTOGIT_INSTALL_OS=linux
+AUTOGIT_WATCH_FILE=$MAIN_FILE
+AUTOGIT_AUTOSAVE_FILE=$AUTOSAVE_FILE
+EOF
 log "Installed watcher scripts into $BIN_DIR"
 
 if [[ "$PROFILE" == "gnosis" ]]; then
@@ -193,6 +220,8 @@ GitHub user: $GIT_USER
 Watch file: $MAIN_FILE
 Autosave file: $AUTOSAVE_FILE
 Ignore globs: $IGNORE_FILE
+GNOSIS discovery: $GNOSIS_DISCOVERY_FILE
+Autogit executable: $AUTOGIT_EXECUTABLE
 
 Manage services:
   systemctl --user status autogit.service
