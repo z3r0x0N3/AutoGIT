@@ -61,6 +61,25 @@ Options:
 USAGE
 }
 
+ensure_not_root_context() {
+  local current_uid
+  current_uid="$(id -u)"
+  if [[ "$current_uid" -ne 0 ]]; then
+    return 0
+  fi
+
+  if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+    local sudo_home
+    sudo_home="$(dscl . -read "/Users/$SUDO_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}' || true)"
+    [[ -n "$sudo_home" ]] || sudo_home="/Users/$SUDO_USER"
+    warn "Installer invoked as root; re-running as $SUDO_USER to install user launch agents"
+    exec sudo -u "$SUDO_USER" HOME="$sudo_home" bash "$0" "$@"
+  fi
+
+  err "Do not run this installer as root. Run it from the logged-in user session."
+  exit 1
+}
+
 require_file() {
   local file_path="$1"
   [[ -f "$file_path" ]] || { err "Missing required file: $file_path"; exit 1; }
@@ -119,27 +138,28 @@ render_plist() {
 }
 
 resolve_launchctl_domain() {
+  local run_uid="$1"
   # Prefer GUI domain for login sessions; fall back to user domain for
   # non-GUI shells where gui/<uid> bootstrap is not supported.
-  if launchctl print "gui/$UID" >/dev/null 2>&1; then
-    LAUNCHCTL_DOMAIN="gui/$UID"
+  if launchctl print "gui/$run_uid" >/dev/null 2>&1; then
+    LAUNCHCTL_DOMAIN="gui/$run_uid"
   else
-    LAUNCHCTL_DOMAIN="user/$UID"
+    LAUNCHCTL_DOMAIN="user/$run_uid"
   fi
 }
 
 bootstrap_agent() {
-  local plist="$1"
+  local plist="$1" run_uid="$2"
   if launchctl bootstrap "$LAUNCHCTL_DOMAIN" "$plist" >/dev/null 2>&1; then
     return 0
   fi
 
   # If selected domain fails (common in ssh/non-aqua sessions), try fallback.
   local fallback=""
-  if [[ "$LAUNCHCTL_DOMAIN" == "gui/$UID" ]]; then
-    fallback="user/$UID"
+  if [[ "$LAUNCHCTL_DOMAIN" == "gui/$run_uid" ]]; then
+    fallback="user/$run_uid"
   else
-    fallback="gui/$UID"
+    fallback="gui/$run_uid"
   fi
 
   if launchctl bootstrap "$fallback" "$plist" >/dev/null 2>&1; then
@@ -173,6 +193,9 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+ensure_not_root_context "$@"
+RUN_UID="$(id -u)"
 
 if [[ -z "${GIT_USER:-}" ]]; then
   read -rp "Enter your GitHub username: " GIT_USER
@@ -232,19 +255,19 @@ fi
 render_plist "$LAUNCHD_TPL_DIR/com.autogit.agent.plist.tpl" "$AUTOGIT_PLIST"
 render_plist "$LAUNCHD_TPL_DIR/com.autosave.agent.plist.tpl" "$AUTOSAVE_PLIST"
 
-resolve_launchctl_domain
+resolve_launchctl_domain "$RUN_UID"
 launchctl bootout "$LAUNCHCTL_DOMAIN" "$AUTOGIT_PLIST" 2>/dev/null || true
 launchctl bootout "$LAUNCHCTL_DOMAIN" "$AUTOSAVE_PLIST" 2>/dev/null || true
 
 if [[ "$NO_START" == "1" ]]; then
   log "Launch agents installed (not started). Domain: $LAUNCHCTL_DOMAIN"
 else
-  if ! bootstrap_agent "$AUTOGIT_PLIST"; then
-    err "Failed to bootstrap autogit launch agent in gui/$UID and user/$UID domains"
+  if ! bootstrap_agent "$AUTOGIT_PLIST" "$RUN_UID"; then
+    err "Failed to bootstrap autogit launch agent in gui/$RUN_UID and user/$RUN_UID domains"
     exit 1
   fi
-  if ! bootstrap_agent "$AUTOSAVE_PLIST"; then
-    err "Failed to bootstrap autosave launch agent in gui/$UID and user/$UID domains"
+  if ! bootstrap_agent "$AUTOSAVE_PLIST" "$RUN_UID"; then
+    err "Failed to bootstrap autosave launch agent in gui/$RUN_UID and user/$RUN_UID domains"
     exit 1
   fi
   launchctl kickstart -k "$LAUNCHCTL_DOMAIN/com.autogit.agent" || true
